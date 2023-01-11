@@ -81,7 +81,7 @@ func (b *Ball) Draw(screen *ebiten.Image) {
 
 type Game struct {
 	width, height int
-	circle        *Ball
+	ball          *Ball
 	last          time.Time
 }
 
@@ -89,7 +89,7 @@ func NewGame(width, height int) *Game {
 	return &Game{
 		width:  width,
 		height: height,
-		circle: NewBall(width/2, height/2),
+		ball: NewBall(width/2, height/2),
 	}
 }
 
@@ -102,12 +102,12 @@ func (g *Game) Update() error {
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
 
-	g.circle.Update(dt, g.width, g.height)
+	g.ball.Update(dt, g.width, g.height)
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.circle.Draw(screen)
+	g.ball.Draw(screen)
 }
 
 func main() {
