@@ -48,7 +48,7 @@ func NewBall(x, y int) *Ball {
 		pos: Point{x: float64(x), y: float64(y)},
 		vel: Point{
 			x: math.Cos(math.Pi/4) * speed,
-			y: math.Cos(math.Pi/4) * speed,
+			y: math.Sin(math.Pi/4) * speed,
 		},
 		color: color.RGBA{
 			R: uint8(rand.Intn(255)),
@@ -61,7 +61,7 @@ func NewBall(x, y int) *Ball {
 
 func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	dtMs /= 20
-	b.pos.x += b.vel.y * dtMs
+	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
 	switch {
 	case b.pos.x >= float64(fieldWidth):
