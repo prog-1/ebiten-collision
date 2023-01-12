@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image/color"
 	"log"
 	"math"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 const (
@@ -36,11 +38,14 @@ type Ball struct {
 
 // NewBall initializes and returns a new Ball instance.
 func NewBall(x, y int) *Ball {
+	//sp := rand.Float64()
+	fmt.Println("new ball")
+	rad := rand.Float64() * math.Pi * 2
 	return &Ball{
 		pos: Point{x: float64(x), y: float64(y)},
 		vel: Point{
-			x: math.Cos(math.Pi/4) * speed,
-			y: math.Sin(math.Pi/4) * speed,
+			x: math.Cos(rad) * speed,// Cos(math.Pi/4)
+			y: math.Sin(rad) * speed,
 		},
 		color: color.RGBA{
 			R: uint8(rand.Intn(255)),
@@ -56,18 +61,22 @@ func NewBall(x, y int) *Ball {
 // dtMs defines a time interval in microseconds between now and a previous time
 // when Update was called.
 func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		NewBall(0, 0)
+		fmt.Println("Goin")
+	}
+	switch {
+	case b.pos.x+radius >= float64(fieldWidth)://right
+		b.vel.x = - b.vel.x
+	case b.pos.x-radius < 0://left
+		b.vel.x = - b.vel.x
+	case b.pos.y+radius >= float64(fieldHeight)://top
+		b.vel.y = - b.vel.y
+	case b.pos.y-radius < 0://bottom
+	b.vel.y = - b.vel.y
+	}
 	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
-	switch {
-	case b.pos.x >= float64(fieldWidth):
-		b.pos.x = 0
-	case b.pos.x < 0:
-		b.pos.x = float64(fieldWidth)
-	case b.pos.y >= float64(fieldHeight):
-		b.pos.y = 0
-	case b.pos.y < 0:
-		b.pos.y = float64(fieldHeight)
-	}
 }
 
 // Draw renders a ball on a screen.
