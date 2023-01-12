@@ -59,14 +59,14 @@ func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
 	switch {
-	case b.pos.x >= float64(fieldWidth):
-		b.pos.x = 0
-	case b.pos.x < 0:
-		b.pos.x = float64(fieldWidth)
-	case b.pos.y >= float64(fieldHeight):
-		b.pos.y = 0
-	case b.pos.y < 0:
-		b.pos.y = float64(fieldHeight)
+	case b.pos.x-radius > float64(fieldWidth):
+		b.pos.x = -b.pos.x
+	case b.pos.x-radius <= 0:
+		b.pos.x = -b.pos.x
+	case b.pos.y+radius > float64(screenHeight):
+		b.pos.y = -b.pos.y
+	case b.pos.y+radius <= 0:
+		b.pos.y = -b.pos.y
 	}
 }
 
