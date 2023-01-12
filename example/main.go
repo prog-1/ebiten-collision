@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 const (
@@ -36,11 +37,12 @@ type Ball struct {
 
 // NewBall initializes and returns a new Ball instance.
 func NewBall(x, y int) *Ball {
+	rad := rand.Float64() * 2 * math.Pi
 	return &Ball{
 		pos: Point{x: float64(x), y: float64(y)},
 		vel: Point{
-			x: math.Cos(math.Pi/4) * speed,
-			y: math.Sin(math.Pi/4) * speed,
+			x: math.Cos(rad) * speed,
+			y: math.Sin(rad) * speed,
 		},
 		color: color.RGBA{
 			R: uint8(rand.Intn(255)),
@@ -53,20 +55,16 @@ func NewBall(x, y int) *Ball {
 
 // Update changes a ball state.
 //
-// dtMs defines a time interval in microseconds between now and a previous time
+// dtMs defines a time interval in milliseconds between now and a previous time
 // when Update was called.
 func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
 	switch {
-	case b.pos.x >= float64(fieldWidth):
-		b.pos.x = 0
-	case b.pos.x < 0:
-		b.pos.x = float64(fieldWidth)
-	case b.pos.y >= float64(fieldHeight):
-		b.pos.y = 0
-	case b.pos.y < 0:
-		b.pos.y = float64(fieldHeight)
+	case b.pos.x+radius >= float64(fieldWidth) || b.pos.x-radius <= 0:
+		b.vel.x = -b.vel.x
+	case b.pos.y+radius >= float64(fieldHeight) || b.pos.y-radius <= 0:
+		b.vel.y = -b.vel.x
 	}
 }
 
@@ -78,7 +76,7 @@ func (b *Ball) Draw(screen *ebiten.Image) {
 // Game is a game instance.
 type Game struct {
 	width, height int
-	ball          *Ball
+	balls         []*Ball
 	// last is a timestamp when Update was called last time.
 	last time.Time
 }
@@ -89,27 +87,33 @@ func NewGame(width, height int) *Game {
 		width:  width,
 		height: height,
 		// A new ball is created at the center of the screen.
-		ball: NewBall(width/2, height/2),
 		last: time.Now(),
 	}
 }
 
 func (g *Game) Layout(outWidth, outHeight int) (w, h int) {
-	return g.width, g.height
+	return screenWidth, screenHeight
 }
 
 // Update updates a game state.
 func (g *Game) Update() error {
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		g.balls = append(g.balls, NewBall(ebiten.CursorPosition()))
+	}
 	t := time.Now()
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
-	g.ball.Update(dt, g.width, g.height)
+	for _, b := range g.balls {
+		b.Update(dt, g.width, g.height)
+	}
 	return nil
 }
 
 // Draw renders a game screen.
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.ball.Draw(screen)
+	for _, b := range g.balls {
+		b.Draw(screen)
+	}
 }
 
 func main() {
