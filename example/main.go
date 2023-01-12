@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 const (
@@ -59,14 +60,14 @@ func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
 	switch {
-	case b.pos.x >= float64(fieldWidth):
-		b.pos.x = 0
-	case b.pos.x < 0:
-		b.pos.x = float64(fieldWidth)
-	case b.pos.y >= float64(fieldHeight):
-		b.pos.y = 0
-	case b.pos.y < 0:
-		b.pos.y = float64(fieldHeight)
+	case b.pos.x+radius >= float64(fieldWidth):
+		b.vel.x = -b.vel.x
+	case b.pos.x-radius <= 0:
+		b.vel.x = -b.vel.x
+	case b.pos.y+radius >= float64(fieldHeight):
+		b.vel.y = -b.vel.y
+	case b.pos.y-radius <= 0:
+		b.vel.y = -b.vel.y
 	}
 }
 
@@ -100,6 +101,10 @@ func (g *Game) Layout(outWidth, outHeight int) (w, h int) {
 
 // Update updates a game state.
 func (g *Game) Update() error {
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		x, y := ebiten.CursorPosition()
+		g.ball.pos.x, g.ball.pos.y = float64(x), float64(y)
+	}
 	t := time.Now()
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
