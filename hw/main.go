@@ -20,7 +20,7 @@ const (
 	radius = 20
 	// Ball default speed in px/ms.
 	maxSpeed = 1
-	friction = 0.9
+	friction = 0.99
 )
 
 // Point is a struct for representing 2D vectors.
@@ -116,7 +116,19 @@ func (g *Game) Update() error {
 	t := time.Now()
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
-	for _, b := range g.balls {
+	for i, b := range g.balls {
+		// Elastic collision - balls swaps their velocities
+		// Algo:
+		// Check whether distance between one ball and other balls <= radius
+		//	1.
+		// Swap velocities
+		for _, b1 := range g.balls[i+1:] {
+			dif := Point{b.pos.x - b1.pos.x, b.pos.y - b1.pos.y}
+			dist := math.Sqrt(math.Pow(dif.x, 2) + math.Pow(dif.y, 2))
+			if math.Abs(dist) <= 2*radius {
+				b.vel, b1.vel = b1.vel, b.vel
+			}
+		}
 		b.Update(dt, g.width, g.height)
 	}
 	return nil
