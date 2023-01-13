@@ -20,6 +20,7 @@ const (
 	radius = 20
 	// Ball default speed in px/ms.
 	maxSpeed = 1
+	friction = 0.9
 )
 
 // Point is a struct for representing 2D vectors.
@@ -74,7 +75,10 @@ func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	case b.pos.y-radius <= 0:
 		b.pos.y = radius
 		b.vel.y = -b.vel.y
+	default:
+		return
 	}
+	b.vel.x, b.vel.y = b.vel.x*friction, b.vel.y*friction
 }
 
 // Draw renders a ball on a screen.
