@@ -19,7 +19,7 @@ const (
 	// Ball radius.
 	radius = 20
 	// Ball default speed in px/ms.
-	speed = 0.4
+	maxSpeed = 1
 )
 
 // Point is a struct for representing 2D vectors.
@@ -38,6 +38,7 @@ type Ball struct {
 // NewBall initializes and returns a new Ball instance.
 func NewBall(x, y int) *Ball {
 	rad := rand.Float64() * 2 * math.Pi
+	speed := rand.Float64() * maxSpeed
 	return &Ball{
 		pos: Point{x: float64(x), y: float64(y)},
 		vel: Point{
@@ -61,10 +62,18 @@ func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
 	switch {
-	case b.pos.x+radius >= float64(fieldWidth) || b.pos.x-radius <= 0:
+	case b.pos.x+radius >= float64(fieldWidth):
+		b.pos.x = float64(fieldWidth) - radius
 		b.vel.x = -b.vel.x
-	case b.pos.y+radius >= float64(fieldHeight) || b.pos.y-radius <= 0:
-		b.vel.y = -b.vel.x
+	case b.pos.x-radius <= 0:
+		b.pos.x = radius
+		b.vel.x = -b.vel.x
+	case b.pos.y+radius >= float64(fieldHeight):
+		b.pos.y = float64(fieldHeight) - radius
+		b.vel.y = -b.vel.y
+	case b.pos.y-radius <= 0:
+		b.pos.y = radius
+		b.vel.y = -b.vel.y
 	}
 }
 
