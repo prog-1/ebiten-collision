@@ -33,6 +33,7 @@ type Ball struct {
 	// Ball speed in px/ms.
 	vel   Point
 	color color.RGBA
+	track []Point
 }
 
 // NewBall initializes and returns a new Ball instance.
@@ -40,8 +41,8 @@ func NewBall(x, y int) *Ball {
 	return &Ball{
 		pos: Point{x: float64(x), y: float64(y)},
 		vel: Point{
-			x: math.Cos(math.Pi/4) * speed,
-			y: math.Sin(math.Pi/4) * speed,
+			x: math.Cos(math.Pi/rand.Float64()) * speed,
+			y: math.Sin(math.Pi/rand.Float64()) * speed,
 		},
 		color: color.RGBA{
 			R: uint8(rand.Intn(255)),
@@ -59,27 +60,40 @@ func NewBall(x, y int) *Ball {
 func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
+	if b.vel.x > 0 {
+		b.vel.x -= 0.001
+	}
+	if b.vel.x < 0 {
+		b.vel.x += 0.001
+	}
+	if b.vel.y > 0 {
+		b.vel.y -= 0.001
+	}
+	if b.vel.y < 0 {
+		b.vel.y += 0.001
+	}
 	switch {
-	case b.pos.x+radius >= float64(fieldWidth):
+	case b.pos.x+radius >= float64(fieldWidth) || b.pos.x-radius <= 0:
 		b.vel.x = -b.vel.x
-	case b.pos.x-radius <= 0:
-		b.vel.x = -b.vel.x
-	case b.pos.y+radius >= float64(fieldHeight):
-		b.vel.y = -b.vel.y
-	case b.pos.y-radius <= 0:
+	case b.pos.y+radius >= float64(fieldHeight) || b.pos.y-radius <= 0:
 		b.vel.y = -b.vel.y
 	}
 }
 
+var transparency = []byte{0x00, 0x1a, 0x33, 0x4d, 0x66, 0x80, 0x99, 0xb3, 0xcc, 0xe6, 0xff}
+
 // Draw renders a ball on a screen.
 func (b *Ball) Draw(screen *ebiten.Image) {
-	ebitenutil.DrawCircle(screen, b.pos.x, b.pos.y, radius, b.color)
+	for i, t := range b.track {
+		b.color.A = transparency[i]
+		ebitenutil.DrawCircle(screen, t.x, t.y, radius, b.color)
+	}
 }
 
 // Game is a game instance.
 type Game struct {
 	width, height int
-	ball          *Ball
+	balls         []*Ball
 	// last is a timestamp when Update was called last time.
 	last time.Time
 }
@@ -90,8 +104,8 @@ func NewGame(width, height int) *Game {
 		width:  width,
 		height: height,
 		// A new ball is created at the center of the screen.
-		ball: NewBall(width/2, height/2),
-		last: time.Now(),
+		balls: []*Ball{},
+		last:  time.Now(),
 	}
 }
 
@@ -103,18 +117,26 @@ func (g *Game) Layout(outWidth, outHeight int) (w, h int) {
 func (g *Game) Update() error {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		x, y := ebiten.CursorPosition()
-		g.ball.pos.x, g.ball.pos.y = float64(x), float64(y)
+		g.balls = append(g.balls, NewBall(x, y))
 	}
 	t := time.Now()
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
-	g.ball.Update(dt, g.width, g.height)
+	for _, ball := range g.balls {
+		if len(ball.track) > 10 {
+			ball.track = ball.track[1:]
+		}
+		ball.track = append(ball.track, ball.pos)
+		ball.Update(dt, g.width, g.height)
+	}
 	return nil
 }
 
 // Draw renders a game screen.
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.ball.Draw(screen)
+	for _, ball := range g.balls {
+		ball.Draw(screen)
+	}
 }
 
 func main() {
