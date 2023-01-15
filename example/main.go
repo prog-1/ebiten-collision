@@ -9,6 +9,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 const (
@@ -18,7 +19,6 @@ const (
 	// Ball radius.
 	radius = 20
 	// Ball default speed in px/ms.
-	speed = 0.4
 )
 
 // Point is a struct for representing 2D vectors.
@@ -34,8 +34,19 @@ type Ball struct {
 	color color.RGBA
 }
 
+func startDir() float64 {
+	a := rand.Float64()
+	b := rand.Intn(2)
+	if b == 0 {
+		return -a
+	}
+	return a
+}
+
 // NewBall initializes and returns a new Ball instance.
-func NewBall(x, y int) *Ball {
+func NewBall() *Ball {
+	speed := startDir()
+	x, y := ebiten.CursorPosition()
 	return &Ball{
 		pos: Point{x: float64(x), y: float64(y)},
 		vel: Point{
@@ -59,14 +70,23 @@ func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
 	switch {
-	case b.pos.x-radius > float64(fieldWidth):
-		b.pos.x = -b.pos.x
-	case b.pos.x-radius <= 0:
-		b.pos.x = -b.pos.x
-	case b.pos.y+radius > float64(screenHeight):
-		b.pos.y = -b.pos.y
-	case b.pos.y+radius <= 0:
-		b.pos.y = -b.pos.y
+	case b.pos.x >= float64(fieldWidth)-radius:
+		b.pos.x = float64(fieldWidth) - radius
+		b.vel.x *= -0.99
+		b.vel.y *= 0.99
+	case b.pos.x <= radius:
+		b.pos.x = radius
+		b.vel.x *= -0.99
+		b.vel.y *= 0.99
+	case b.pos.y >= float64(fieldHeight)-radius:
+		b.pos.y = float64(fieldHeight) - radius
+		b.vel.x *= 0.99
+		b.vel.y *= -0.99
+	case b.pos.y <= radius:
+		b.pos.y = radius
+		b.vel.x *= 0.99
+		b.vel.y *= -0.99
+
 	}
 }
 
@@ -78,7 +98,7 @@ func (b *Ball) Draw(screen *ebiten.Image) {
 // Game is a game instance.
 type Game struct {
 	width, height int
-	ball          *Ball
+	ball          []*Ball
 	// last is a timestamp when Update was called last time.
 	last time.Time
 }
@@ -88,8 +108,8 @@ func NewGame(width, height int) *Game {
 	return &Game{
 		width:  width,
 		height: height,
-		// A new ball is created at the center of the screen.
-		ball: NewBall(width/2, height/2),
+		// A new ball is created at the cursor position
+		ball: []*Ball{},
 		last: time.Now(),
 	}
 }
@@ -103,18 +123,63 @@ func (g *Game) Update() error {
 	t := time.Now()
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
-	g.ball.Update(dt, g.width, g.height)
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		g.ball = append(g.ball, NewBall())
+	}
+	for i := 0; i < len(g.ball); i++ {
+		for j := i + 1; j < len(g.ball); j++ {
+			if g.ball[i].colliding(g.ball[j]) {
+				g.ball[i].resolving(g.ball[j])
+			}
+		}
+		g.ball[i].Update(dt, g.width, g.height)
+	}
 	return nil
 }
 
+// I understood how methods works yay!
+func (a *Ball) colliding(b *Ball) bool {
+	distX, distY := a.pos.x-b.pos.x, a.pos.y-b.pos.y
+	sqrtRad := 4 * radius
+	distSqr := (distX * distX) + (distY * distY)
+	return distSqr <= float64(sqrtRad)
+}
+
+func (a *Ball) resolving(b *Ball) { // in fact not really, this method is weird junk
+	// also i have no idea if it works with fast-moving balls - my laptop is too slow
+	// but with slow-moving it sometimes even work right, but mostly weird
+
+	// distX, distY := b.pos.x-a.pos.x, b.pos.y-a.pos.y
+	// distSqr := (distX * distX) + (distY * distY)
+	// angle := math.Atan2(b.pos.y-a.pos.y, b.pos.x-a.pos.x)
+	// distToMove := 2*radius - distSqr
+	// b.pos.x += float64(math.Cos(angle) * distToMove)
+	// b.pos.y += float64(math.Cos(angle) * distToMove)
+
+	// i read it should be tangent vectors related code here, but it is too complicated - i dont wanna to work with this rn
+	//ehhhh vectors in go... what?
+	//https://www.netguru.com/blog/vector-operations-in-go
+	a.vel, b.vel = b.vel, a.vel
+	a.pos.x, a.pos.y = a.pos.x+a.vel.x, a.pos.y+a.vel.y
+	//Sources:
+	//https://stackoverflow.com/questions/345838/ball-to-ball-collision-detection-and-handling
+	//https://flatredball.com/documentation/tutorials/math/circle-collision/
+}
+
+// i hate this method so much!
+
 // Draw renders a game screen.
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.ball.Draw(screen)
+	screen.Fill(color.RGBA{45, 45, 45, 45})
+	for i := range g.ball {
+		g.ball[i].Draw(screen)
+	}
 }
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	g := NewGame(screenWidth, screenHeight)
+	ebiten.SetWindowTitle("ball masquarade!")
 	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
 	}
