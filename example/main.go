@@ -33,6 +33,7 @@ type Ball struct {
 	pos Point
 	// Ball speed in px/ms.
 	vel   Point
+	track []Point
 	color color.RGBA
 }
 
@@ -105,6 +106,13 @@ func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 
 // Draw renders a ball on a screen.
 func (b *Ball) Draw(screen *ebiten.Image) {
+	track_clr := b.color
+	track_clr.A = 56
+	for i := len(b.track) - 1; i > 0; i-- {
+		ebitenutil.DrawLine(screen, b.track[i].x, b.track[i].y, b.track[i/2].x, b.track[i/2].y, track_clr)
+		ebitenutil.DrawCircle(screen, b.track[i].x, b.track[i].y, radius, track_clr)
+		track_clr.A -= 5
+	}
 	ebitenutil.DrawCircle(screen, b.pos.x, b.pos.y, radius, b.color)
 }
 
@@ -151,6 +159,12 @@ func (g *Game) Update() error {
 				b.vel, ba.vel = ba.vel, b.vel
 			}
 		}
+		if len(b.track) < 10 {
+			b.track = append(b.track, b.pos)
+			continue
+		}
+		b.track = b.track[1:]
+
 	}
 	return nil
 }
