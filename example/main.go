@@ -134,7 +134,21 @@ func (g *Game) Update() error {
 		g.balls = append(g.balls, NewBall())
 	}
 	for i := range g.balls {
+
 		g.balls[i].Update(dt, g.width, g.height)
+		for i1 := range g.balls[i+1:] {
+			dif := Point{g.balls[i].pos.x - g.balls[i1].pos.x, g.balls[i].pos.y - g.balls[i1].pos.y}
+			dist := math.Sqrt(math.Pow(dif.x, 2) + math.Pow(dif.y, 2))
+			if math.Abs(dist) <= 2*radius {
+				g.balls[i].vel, g.balls[i1].vel = g.balls[i1].vel, g.balls[i].vel
+				g.balls[i].pos.x, g.balls[i].pos.y = g.balls[i].pos.x+g.balls[i].vel.x, g.balls[i].pos.y+g.balls[i].vel.y
+				// g.balls[i].vel.x *= 0.95
+				// g.balls[i].vel.y *= 0.95
+				// g.balls[i1].vel.x *= 0.95
+				// g.balls[i1].vel.y *= 0.95
+
+			}
+		}
 		if len(g.balls[i].track) < 25 {
 			g.balls[i].track = append(g.balls[i].track, g.balls[i].pos)
 		} else {
