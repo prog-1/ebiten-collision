@@ -40,12 +40,13 @@ type Ball struct {
 
 // NewBall initializes and returns a new Ball instance.
 func NewBall(x, y int) *Ball {
+	degrees := float64(rand.Intn(360) + 1)
 	return &Ball{
 		curentSpeed: speed,
 		pos:         Point{x: float64(x), y: float64(y)},
 		vel: Point{
-			x: math.Cos(float64(rand.Intn(360)+1) * (math.Pi / 180)),
-			y: math.Sin(float64(rand.Intn(360)+1) * (math.Pi / 180)),
+			x: math.Cos(degrees * (math.Pi / 180)),
+			y: math.Sin(degrees * (math.Pi / 180)),
 		},
 		color: color.RGBA{
 			R: uint8(rand.Intn(255)),
