@@ -9,44 +9,55 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 const (
 	screenWidth  = 640
 	screenHeight = 480
-
-	// Ball radius.
-	radius = 20
-	// Ball default speed in px/ms.
-	speed = 0.4
+	radius       = 20
 )
 
-// Point is a struct for representing 2D vectors.
+type Game struct {
+	width, height int
+	balls         []*Ball
+	last          time.Time
+}
+
 type Point struct {
 	x, y float64
 }
 
 type Ball struct {
-	// Ball position on a screen.
 	pos Point
 	// Ball speed in px/ms.
 	vel   Point
 	color color.RGBA
+	trail *Ball
 }
 
-// NewBall initializes and returns a new Ball instance.
 func NewBall(x, y int) *Ball {
+	mul := float64(rand.Intn(5) + 1)
+	speed := rand.Float64()
 	return &Ball{
 		pos: Point{x: float64(x), y: float64(y)},
 		vel: Point{
-			x: math.Cos(math.Pi/4) * speed,
-			y: math.Sin(math.Pi/4) * speed,
+			x: math.Cos(math.Pi*mul/3) * speed,
+			y: math.Sin(math.Pi*mul/3) * speed,
 		},
 		color: color.RGBA{
 			R: uint8(rand.Intn(255)),
 			G: uint8(rand.Intn(255)),
 			B: uint8(rand.Intn(255)),
 			A: 255,
+		},
+		trail: &Ball{pos: Point{x: float64(x + radius - 1), y: float64(y)},
+			color: color.RGBA{
+				R: uint8(0),
+				G: uint8(0),
+				B: uint8(0),
+				A: 255,
+			},
 		},
 	}
 }
@@ -58,39 +69,57 @@ func NewBall(x, y int) *Ball {
 func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
-	switch {
-	case b.pos.x >= float64(fieldWidth):
-		b.pos.x = 0
-	case b.pos.x < 0:
-		b.pos.x = float64(fieldWidth)
-	case b.pos.y >= float64(fieldHeight):
-		b.pos.y = 0
-	case b.pos.y < 0:
-		b.pos.y = float64(fieldHeight)
+	b.trail.pos.x += b.vel.x * dtMs
+	b.trail.pos.y += b.vel.y * dtMs
+	if b.vel.x > 0 {
+		b.vel.x -= 0.0005
+	} else if b.vel.x < 0 {
+		b.vel.x += 0.0005
 	}
+	if b.vel.y > 0 {
+		b.vel.y -= 0.0005
+	} else if b.vel.y < 0 {
+		b.vel.y += 0.0005
+	}
+	switch {
+	case b.pos.x+radius >= float64(fieldWidth) && b.pos.y+radius >= float64(fieldHeight):
+		b.vel.x = -b.vel.x
+		b.vel.y = -b.vel.y
+	case b.pos.x+radius >= float64(fieldWidth) && b.pos.y+radius <= 0:
+		b.vel.x = -b.vel.x
+		b.vel.y = -b.vel.y
+	case b.pos.x+radius <= 0 && b.pos.y+radius >= float64(fieldHeight):
+		b.vel.x = -b.vel.x
+		b.vel.y = -b.vel.y
+	case b.pos.x+radius <= 0 && b.pos.y+radius <= 0:
+		b.vel.x = -b.vel.x
+		b.vel.y = -b.vel.y
+	case b.pos.x+radius-1 >= float64(fieldWidth):
+		b.vel.x = -b.vel.x
+	case b.pos.x-radius+1 <= 0:
+		b.vel.x = -b.vel.x
+	case b.pos.y+radius-1 >= float64(fieldHeight):
+		b.vel.y = -b.vel.y
+	case b.pos.y-radius+1 <= 0:
+		b.vel.y = -b.vel.y
+	}
+	b.trail.vel.x = b.vel.x
+	b.trail.vel.y = b.vel.y
 }
 
-// Draw renders a ball on a screen.
+func (b *Ball) DrawTrail(screen *ebiten.Image) {
+	ebitenutil.DrawCircle(screen, b.pos.x, b.pos.y, radius/5, b.color)
+}
+
 func (b *Ball) Draw(screen *ebiten.Image) {
 	ebitenutil.DrawCircle(screen, b.pos.x, b.pos.y, radius, b.color)
 }
 
-// Game is a game instance.
-type Game struct {
-	width, height int
-	ball          *Ball
-	// last is a timestamp when Update was called last time.
-	last time.Time
-}
-
-// NewGame returns a new Game instance.
 func NewGame(width, height int) *Game {
 	return &Game{
 		width:  width,
 		height: height,
-		// A new ball is created at the center of the screen.
-		ball: NewBall(width/2, height/2),
-		last: time.Now(),
+		last:   time.Now(),
 	}
 }
 
@@ -98,18 +127,24 @@ func (g *Game) Layout(outWidth, outHeight int) (w, h int) {
 	return g.width, g.height
 }
 
-// Update updates a game state.
 func (g *Game) Update() error {
 	t := time.Now()
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
-	g.ball.Update(dt, g.width, g.height)
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		g.balls = append(g.balls, NewBall(ebiten.CursorPosition()))
+	}
+	for _, b := range g.balls {
+		b.Update(dt, g.width, g.height)
+	}
 	return nil
 }
 
-// Draw renders a game screen.
 func (g *Game) Draw(screen *ebiten.Image) {
-	g.ball.Draw(screen)
+	for _, b := range g.balls {
+		b.Draw(screen)
+		b.DrawTrail(screen)
+	}
 }
 
 func main() {
