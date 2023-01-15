@@ -15,39 +15,49 @@ import (
 const (
 	screenWidth  = 640
 	screenHeight = 480
-
-	// Ball radius.
-	radius = 20
-	// Ball default speed in px/ms.
-	speed = 0.4
+	radius       = 20
 )
 
-// Point is a struct for representing 2D vectors.
+type Game struct {
+	width, height int
+	balls         []*Ball
+	last          time.Time
+}
+
 type Point struct {
 	x, y float64
 }
 
 type Ball struct {
-	// Ball position on a screen.
 	pos Point
 	// Ball speed in px/ms.
 	vel   Point
 	color color.RGBA
+	trail *Ball
 }
 
-// NewBall initializes and returns a new Ball instance.
 func NewBall(x, y int) *Ball {
+	mul := float64(rand.Intn(5) + 1)
+	speed := rand.Float64()
 	return &Ball{
 		pos: Point{x: float64(x), y: float64(y)},
 		vel: Point{
-			x: math.Cos(math.Pi/4) * rand.Float64(),
-			y: math.Sin(math.Pi/4) * rand.Float64(),
+			x: math.Cos(math.Pi*mul/3) * speed,
+			y: math.Sin(math.Pi*mul/3) * speed,
 		},
 		color: color.RGBA{
 			R: uint8(rand.Intn(255)),
 			G: uint8(rand.Intn(255)),
 			B: uint8(rand.Intn(255)),
 			A: 255,
+		},
+		trail: &Ball{pos: Point{x: float64(x + radius - 1), y: float64(y)},
+			color: color.RGBA{
+				R: uint8(0),
+				G: uint8(0),
+				B: uint8(0),
+				A: 255,
+			},
 		},
 	}
 }
@@ -57,35 +67,54 @@ func NewBall(x, y int) *Ball {
 // dtMs defines a time interval in microseconds between now and a previous time
 // when Update was called.
 func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
-	b.pos.x += (b.vel.x - 0.1) * dtMs
-	b.pos.y += (b.vel.y - 0.1) * dtMs
+	b.pos.x += b.vel.x * dtMs
+	b.pos.y += b.vel.y * dtMs
+	b.trail.pos.x += b.vel.x * dtMs
+	b.trail.pos.y += b.vel.y * dtMs
+	if b.vel.x > 0 {
+		b.vel.x -= 0.0005
+	} else if b.vel.x < 0 {
+		b.vel.x += 0.0005
+	}
+	if b.vel.y > 0 {
+		b.vel.y -= 0.0005
+	} else if b.vel.y < 0 {
+		b.vel.y += 0.0005
+	}
 	switch {
-	case b.pos.x+radius >= float64(fieldWidth):
+	case b.pos.x+radius >= float64(fieldWidth) && b.pos.y+radius >= float64(fieldHeight):
 		b.vel.x = -b.vel.x
-	case b.pos.x-radius < 0:
-		b.vel.x = -b.vel.x
-	case b.pos.y+radius >= float64(fieldHeight):
 		b.vel.y = -b.vel.y
-	case b.pos.y-radius < 0:
+	case b.pos.x+radius >= float64(fieldWidth) && b.pos.y+radius <= 0:
+		b.vel.x = -b.vel.x
+		b.vel.y = -b.vel.y
+	case b.pos.x+radius <= 0 && b.pos.y+radius >= float64(fieldHeight):
+		b.vel.x = -b.vel.x
+		b.vel.y = -b.vel.y
+	case b.pos.x+radius <= 0 && b.pos.y+radius <= 0:
+		b.vel.x = -b.vel.x
+		b.vel.y = -b.vel.y
+	case b.pos.x+radius-1 >= float64(fieldWidth):
+		b.vel.x = -b.vel.x
+	case b.pos.x-radius+1 <= 0:
+		b.vel.x = -b.vel.x
+	case b.pos.y+radius-1 >= float64(fieldHeight):
+		b.vel.y = -b.vel.y
+	case b.pos.y-radius+1 <= 0:
 		b.vel.y = -b.vel.y
 	}
+	b.trail.vel.x = b.vel.x
+	b.trail.vel.y = b.vel.y
 }
 
-// Draw renders a ball on a screen.
+func (b *Ball) DrawTrail(screen *ebiten.Image) {
+	ebitenutil.DrawCircle(screen, b.pos.x, b.pos.y, radius/5, b.color)
+}
+
 func (b *Ball) Draw(screen *ebiten.Image) {
 	ebitenutil.DrawCircle(screen, b.pos.x, b.pos.y, radius, b.color)
 }
 
-// Game is a game instance.
-type Game struct {
-	width, height int
-	balls         []*Ball
-	// ball          *Ball
-	// last is a timestamp when Update was called last time.
-	last time.Time
-}
-
-// NewGame returns a new Game instance.
 func NewGame(width, height int) *Game {
 	return &Game{
 		width:  width,
@@ -98,7 +127,6 @@ func (g *Game) Layout(outWidth, outHeight int) (w, h int) {
 	return g.width, g.height
 }
 
-// Update updates a game state.
 func (g *Game) Update() error {
 	t := time.Now()
 	dt := float64(t.Sub(g.last).Milliseconds())
@@ -112,10 +140,10 @@ func (g *Game) Update() error {
 	return nil
 }
 
-// Draw renders a game screen.
 func (g *Game) Draw(screen *ebiten.Image) {
 	for _, b := range g.balls {
 		b.Draw(screen)
+		b.DrawTrail(screen)
 	}
 }
 
