@@ -15,7 +15,7 @@ import (
 const (
 	screenWidth  = 640
 	screenHeight = 480
-
+	trackLength  = 15
 	// Ball radius.
 	radius = 20
 )
@@ -30,6 +30,12 @@ type Ball struct {
 	pos Point
 	// Ball speed in px/ms.
 	vel   Point
+	color color.RGBA
+	track []*Track
+}
+
+type Track struct {
+	pos   Point
 	color color.RGBA
 }
 
@@ -70,26 +76,48 @@ func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 		b.vel.y += 0.001
 	}
 	switch {
-	case b.pos.x >= float64(fieldWidth):
+	case b.pos.x+radius >= float64(fieldWidth):
+		b.pos.x = float64(fieldWidth) - radius
 		b.vel.x = -b.vel.x
-	case b.pos.x < 0:
+	case b.pos.x-radius <= 0:
+		b.pos.x = radius
 		b.vel.x = -b.vel.x
-	case b.pos.y >= float64(fieldHeight):
+	case b.pos.y+radius >= float64(fieldHeight):
+		b.pos.y = float64(fieldHeight) - radius
 		b.vel.y = -b.vel.y
-	case b.pos.y < 0:
+	case b.pos.y-radius <= 0:
+		b.pos.y = radius
 		b.vel.y = -b.vel.y
+	}
+	b.track = append(b.track, &Track{
+		pos: Point{x: b.pos.x, y: b.pos.y},
+		color: color.RGBA{
+			R: b.color.R,
+			G: b.color.G,
+			B: b.color.B,
+			A: 90,
+		},
+	})
+	for _, t := range b.track {
+		t.color.A -= 90 / trackLength
+	}
+	if len(b.track) > trackLength {
+		b.track = b.track[len(b.track)-trackLength:]
 	}
 }
 
 // Draw renders a ball on a screen.
 func (b *Ball) Draw(screen *ebiten.Image) {
 	ebitenutil.DrawCircle(screen, b.pos.x, b.pos.y, radius, b.color)
+	for _, t := range b.track {
+		ebitenutil.DrawCircle(screen, t.pos.x, t.pos.y, radius, t.color)
+	}
 }
 
 // Game is a game instance.
 type Game struct {
 	width, height int
-	balls          []*Ball
+	balls         []*Ball
 	// last is a timestamp when Update was called last time.
 	last time.Time
 }
@@ -99,8 +127,8 @@ func NewGame(width, height int) *Game {
 	return &Game{
 		width:  width,
 		height: height,
-		balls: []*Ball{},
-		last: time.Now(),
+		balls:  []*Ball{},
+		last:   time.Now(),
 	}
 }
 
@@ -117,8 +145,13 @@ func (g *Game) Update() error {
 	t := time.Now()
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
-	for _, ball := range g.balls {
-		ball.Update(dt, g.width, g.height)
+	for i := 0; i < len(g.balls); i++ {
+		g.balls[i].Update(dt, g.width, g.height)
+		for j := i + 1; j < len(g.balls); j++ {
+			if math.Abs(g.balls[i].pos.x-g.balls[j].pos.x)+math.Abs(g.balls[i].pos.y-g.balls[j].pos.y) <= 2*radius {
+				g.balls[i].vel, g.balls[j].vel = g.balls[j].vel, g.balls[i].vel
+			}
+		}
 	}
 	return nil
 }
