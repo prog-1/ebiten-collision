@@ -14,20 +14,6 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
-/*
-vx1 + vx2 = vx1(1) + vx2(1)
-vy1 + vy2 = vy1(1) + vy2(1)
-
-Before collision
-k1 = (vx1**2 + vy1**2)**0.5 / 2
-k2 = (vx2**2 + vy2**2)**0.5 / 2
-
-After
-k1(1) = (vx1(1)**2 + vy1(1)**2)**0.5 / 2
-k2(1) = (vx2(1)**2 + vy2(1)**2)**0.5 / 2
-
-k1(1) + k2(1) = k1 + k2
-*/
 const (
 	screenWidth  = 640
 	screenHeight = 480
@@ -138,18 +124,7 @@ func (g *Game) Update() error {
 		for j := range g.ball[i+1:] {
 			j += i + 1
 			if math.Sqrt(math.Pow(g.ball[i].pos.x-g.ball[j].pos.x, 2)+math.Pow(g.ball[i].pos.y-g.ball[j].pos.y, 2)) <= 2*radius {
-				//fmt.Println("Colieded")
-				fi := math.Atan(g.ball[j].pos.y-g.ball[i].pos.y)/g.ball[j].pos.x - g.ball[i].pos.x
-				v1x := g.ball[j].curentSpeed*math.Cos(math.Acos(g.ball[j].vel.x)/(math.Pi/180)-fi)*math.Cos(fi) + g.ball[i].curentSpeed*math.Sin(math.Acos(g.ball[i].vel.x)/(math.Pi/180)-fi)*math.Cos(fi+math.Pi/2)
-				v1y := g.ball[j].curentSpeed*math.Cos(math.Acos(g.ball[j].vel.x)/(math.Pi/180)-fi)*math.Sin(fi) + g.ball[i].curentSpeed*math.Sin(math.Acos(g.ball[i].vel.x)/(math.Pi/180)-fi)*math.Sin(fi+math.Pi/2)
-				v2x := g.ball[j].curentSpeed*math.Cos(math.Acos(g.ball[i].vel.x)/(math.Pi/180)-fi)*math.Cos(fi) + g.ball[i].curentSpeed*math.Sin(math.Acos(g.ball[j].vel.x)/(math.Pi/180)-fi)*math.Cos(fi+math.Pi/2)
-				v2y := g.ball[j].curentSpeed*math.Cos(math.Acos(g.ball[i].vel.x)/(math.Pi/180)-fi)*math.Sin(fi) + g.ball[i].curentSpeed*math.Sin(math.Acos(g.ball[j].vel.x)/(math.Pi/180)-fi)*math.Sin(fi+math.Pi/2)
-				g.ball[i].vel.x = v1x
-				g.ball[i].vel.y = v1y
-				g.ball[j].vel.x = v2x
-				g.ball[j].vel.y = v2y
-				g.ball[i].curentSpeed = math.Sqrt(math.Pow(v1x, 2) + math.Pow(v1y, 2))
-				g.ball[j].curentSpeed = math.Sqrt(math.Pow(v2x, 2) + math.Pow(v2y, 2))
+				g.ball[i].vel, g.ball[j].vel = g.ball[j].vel, g.ball[i].vel
 			}
 		}
 	}
