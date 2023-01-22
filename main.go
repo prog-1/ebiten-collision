@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	"log"
 	"math"
@@ -22,7 +21,11 @@ const (
 	// Ball radius.
 	radius = 20
 	// Ball default speed in px/ms.
-	speed = 0.6
+	speed    = 0.8
+	friction = 0.995 //from 0 to 1
+
+	trailLenght   = 20
+	fadeIntencity = 10
 )
 
 type Game struct {
@@ -37,12 +40,18 @@ type Point struct {
 	x, y float64
 }
 
+type Trail struct {
+	x, y  float64
+	color color.RGBA
+}
+
 type Ball struct {
 	// Ball position on a screen.
 	pos Point
 	// Ball speed in px/ms.
-	vel   Point
-	color color.RGBA
+	vel    Point
+	color  color.RGBA
+	trails []Trail
 }
 
 //---------------------------Update-------------------------------------
@@ -55,7 +64,7 @@ func (g *Game) Update() error {
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
 	for _, ball := range g.balls {
-		ball.Update(dt, g.width, g.height)
+		ball.Update(dt, g.width, g.height, g.balls)
 	}
 	return nil
 }
@@ -63,27 +72,60 @@ func (g *Game) Update() error {
 // Update changes a ball state.
 // dtMs defines a time interval in microseconds between now and a previous time
 // when Update was called.
-func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
+func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int, balls []*Ball) {
+
+	//-----------Elastic-collision---------------
+	for _, ob := range balls { // ob = other ball
+		dx := ob.pos.x - b.pos.x
+		dy := ob.pos.y - b.pos.y
+		distance := math.Sqrt(dx*dx + dy*dy)
+		if distance < radius*2 {
+			b.vel, ob.vel = ob.vel, b.vel
+		}
+	}
+
+	//----------------Borders-------------------
 	switch {
 	case b.pos.x+radius >= float64(fieldWidth): //right
+		b.pos.x = float64(fieldWidth) - radius //to avoid getting stuck in border
 		b.vel.x = -b.vel.x
 	case b.pos.x-radius < 0: //left
+		b.pos.x = radius
 		b.vel.x = -b.vel.x
 	case b.pos.y+radius >= float64(fieldHeight): //top
+		b.pos.y = float64(fieldHeight) - radius
 		b.vel.y = -b.vel.y
 	case b.pos.y-radius < 0: //bottom
+		b.pos.y = radius
 		b.vel.y = -b.vel.y
 	}
+
+	//----------------Trail-------------------
+	b.trails = append(b.trails, Trail{b.pos.x, b.pos.y, b.color}) // adding current position to trail
+	if len(b.trails) > trailLenght {                              //update trail slice
+		b.trails = b.trails[1:]
+	}
+
+	//----------------Position-----------------
 	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
+
+	//-------------Friction-------------------
+	b.vel.x = b.vel.x * friction //adding friction to ball
+	b.vel.y = b.vel.y * friction
 }
 
 //---------------------------Draw-------------------------------------
 
 // Draw renders a game screen.
 func (g *Game) Draw(screen *ebiten.Image) {
-	for _, ball := range g.balls {
-		ball.Draw(screen)
+	for _, b := range g.balls {
+		b.Draw(screen) //drawing ball
+
+		for i := len(b.trails) - 1; i >= 0; i-- { //drawing trails
+			b.trails[i].color.A -= fadeIntencity //decreasing alpha of each trail
+			ebitenutil.DrawCircle(screen, b.trails[i].x, b.trails[i].y, radius, b.trails[i].color)
+		}
 	}
 }
 
@@ -97,7 +139,6 @@ func (b *Ball) Draw(screen *ebiten.Image) {
 // NewBall initializes and returns a new Ball instance.
 func NewBall(x, y int) *Ball {
 	//sp := rand.Float64()
-	fmt.Println("new ball")
 	rad := rand.Float64() * math.Pi * 2 //random ball velocity
 	return &Ball{
 		pos: Point{x: float64(x), y: float64(y)},
@@ -131,8 +172,8 @@ func main() {
 // NewGame returns a new Game instance.
 func NewGame(width, height int) *Game {
 	return &Game{
-		width:    width,
-		height:   height,
-		last:     time.Now(),
+		width:  width,
+		height: height,
+		last:   time.Now(),
 	}
 }
