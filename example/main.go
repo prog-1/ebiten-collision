@@ -38,11 +38,13 @@ type Ball struct {
 
 // NewBall initializes and returns a new Ball instance.
 func NewBall(x, y int) *Ball {
+	r := 2 * math.Pi * rand.Float64() // from 0 to 2Pi (rand.Float64() is from 0 to 1)
 	return &Ball{
 		pos: Point{x: float64(x), y: float64(y)},
 		vel: Point{
-			x: math.Cos(math.Pi/rand.Float64()) * speed,
-			y: math.Sin(math.Pi/rand.Float64()) * speed,
+			// always the same speed, different vector
+			x: math.Cos(r) * speed,
+			y: math.Sin(r) * speed,
 		},
 		color: color.RGBA{
 			R: uint8(rand.Intn(255)),
@@ -58,8 +60,18 @@ func NewBall(x, y int) *Ball {
 // dtMs defines a time interval in microseconds between now and a previous time
 // when Update was called.
 func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
+	switch {
+	case b.pos.x+radius >= float64(fieldWidth) || b.pos.x-radius <= 0:
+		b.vel.x = -b.vel.x
+	case b.pos.y+radius >= float64(fieldHeight) || b.pos.y-radius <= 0:
+		b.vel.y = -b.vel.y
+	}
 	b.pos.x += b.vel.x * dtMs
 	b.pos.y += b.vel.y * dtMs
+	if len(b.track) > 10 {
+		b.track = b.track[1:]
+	}
+	b.track = append(b.track, b.pos)
 	if b.vel.x > 0 {
 		b.vel.x -= 0.001
 	}
@@ -71,12 +83,6 @@ func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	}
 	if b.vel.y < 0 {
 		b.vel.y += 0.001
-	}
-	switch {
-	case b.pos.x+radius >= float64(fieldWidth) || b.pos.x-radius <= 0:
-		b.vel.x = -b.vel.x
-	case b.pos.y+radius >= float64(fieldHeight) || b.pos.y-radius <= 0:
-		b.vel.y = -b.vel.y
 	}
 }
 
@@ -123,10 +129,6 @@ func (g *Game) Update() error {
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
 	for _, ball := range g.balls {
-		if len(ball.track) > 10 {
-			ball.track = ball.track[1:]
-		}
-		ball.track = append(ball.track, ball.pos)
 		ball.Update(dt, g.width, g.height)
 	}
 	return nil
@@ -141,6 +143,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
+	ebiten.SetWindowSize(screenWidth, screenHeight)
 	g := NewGame(screenWidth, screenHeight)
 	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
