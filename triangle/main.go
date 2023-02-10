@@ -16,7 +16,7 @@ const (
 	screenHeight = 480
 
 	// Ball radius.
-	radius = 20
+	//radius = 20
 	// Ball default speed in px/ms.
 	speed = 0.4
 )
@@ -121,9 +121,8 @@ func NewGame(width, height int) *Game {
 	return &Game{
 		width:  width,
 		height: height,
-		// A new ball is created at the center of the screen.
-		balls: balls,
-		last:  time.Now(),
+		balls:  balls,
+		last:   time.Now(),
 	}
 }
 

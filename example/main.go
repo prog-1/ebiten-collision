@@ -109,9 +109,8 @@ func NewGame(width, height int) *Game {
 	return &Game{
 		width:  width,
 		height: height,
-		// A new ball is created at the center of the screen.
-		balls: []*Ball{},
-		last:  time.Now(),
+		balls:  []*Ball{},
+		last:   time.Now(),
 	}
 }
 
