@@ -61,9 +61,9 @@ func NewBall(x, y int) *Ball {
 // when Update was called.
 func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 	switch {
-	case b.pos.x+radius >= float64(fieldWidth) || b.pos.x-radius <= 0:
+	case b.pos.x+radius >= float64(fieldWidth-1) || b.pos.x-radius <= 0:
 		b.vel.x = -b.vel.x
-	case b.pos.y+radius >= float64(fieldHeight) || b.pos.y-radius <= 0:
+	case b.pos.y+radius >= float64(fieldHeight-1) || b.pos.y-radius <= 0:
 		b.vel.y = -b.vel.y
 	}
 	b.pos.x += b.vel.x * dtMs
@@ -127,8 +127,13 @@ func (g *Game) Update() error {
 	t := time.Now()
 	dt := float64(t.Sub(g.last).Milliseconds())
 	g.last = t
-	for _, ball := range g.balls {
+	for i, ball := range g.balls {
 		ball.Update(dt, g.width, g.height)
+		for j := i + 1; j < len(g.balls); j++ {
+			if math.Pow(g.balls[i].pos.x-g.balls[j].pos.x, 2)+math.Pow(g.balls[i].pos.y-g.balls[j].pos.y, 2) <= math.Pow(2*radius, 2) { // получено из x^2 + y^2 = R^2
+				g.balls[i].vel, g.balls[j].vel = g.balls[j].vel, g.balls[i].vel
+			}
+		}
 	}
 	return nil
 }
