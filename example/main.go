@@ -18,12 +18,16 @@ const (
 
 	// Ball radius.
 	radius = 20
-	// Ball default speed in px/ms.
 )
 
 // Point is a struct for representing 2D vectors.
 type Point struct {
 	x, y float64
+}
+
+type Trail struct {
+	pos   Point
+	color color.RGBA
 }
 
 type Ball struct {
@@ -32,6 +36,7 @@ type Ball struct {
 	// Ball speed in px/ms.
 	vel   Point
 	color color.RGBA
+	trail []Trail
 }
 
 func startDir() float64 {
@@ -88,6 +93,10 @@ func (b *Ball) Update(dtMs float64, fieldWidth, fieldHeight int) {
 		b.vel.y *= -0.99
 
 	}
+	b.trail = append(b.trail, Trail{pos: b.pos, color: b.color})
+	if len(b.trail) > 45 {
+		b.trail = b.trail[1:]
+	}
 }
 
 // Draw renders a ball on a screen.
@@ -140,9 +149,8 @@ func (g *Game) Update() error {
 // I understood how methods works yay!
 func (a *Ball) colliding(b *Ball) bool {
 	distX, distY := a.pos.x-b.pos.x, a.pos.y-b.pos.y
-	sqrtRad := 4 * radius
-	distSqr := (distX * distX) + (distY * distY)
-	return distSqr <= float64(sqrtRad)
+	distSqr := math.Sqrt(distX*distX + distY*distY)
+	return distSqr <= float64(radius*2)
 }
 
 func (a *Ball) resolving(b *Ball) { // in fact not really, this method is weird junk
@@ -171,8 +179,12 @@ func (a *Ball) resolving(b *Ball) { // in fact not really, this method is weird 
 // Draw renders a game screen.
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{45, 45, 45, 45})
-	for i := range g.ball {
-		g.ball[i].Draw(screen)
+	for _, i := range g.ball {
+		i.Draw(screen)
+		for j := len(i.trail) - 1; j >= 0; j-- {
+			i.trail[j].color.A -= 100
+			ebitenutil.DrawCircle(screen, i.trail[j].pos.x, i.trail[j].pos.y, radius, i.trail[j].color)
+		}
 	}
 }
 
